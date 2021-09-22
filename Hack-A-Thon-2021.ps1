@@ -55,7 +55,7 @@ $batchId = New-Guid
 $devMetaConn = 'server=ssb-dev-databases.database.windows.net;user id=svcETL;password= ql^$RwSPyCwAK6s;initial catalog=SSBRPDevelopment'
 $prodMetaConn = 'Data Source=ssbmetadata.database.windows.net;Initial Catalog=SSBRPProduction;User ID=svcETL;Password=ql^$RwSPyCwAK6s;'
 
-$batchStart = (Get-Date).ToString("yyyy-MM-dd:hh:mm:ss")
+$batchStart = (Get-Date).ToString("yyyy-MM-dd:HH:mm:ss")
 $queryStartBatch = "INSERT INTO audit.HackAThon2021_jbarberio_BatchLog (BatchId,BatchStartDate) VALUES ('{0}','{1}')" -f $batchId, $batchStart
 Invoke-Sqlcmd -ConnectionString $devMetaConn -Query $queryStartBatch
 
@@ -229,6 +229,6 @@ $deploymentLogParam.value = $deploymentLog
 $command.parameters.add($deploymentLogParam) | Out-Null
 $command.ExecuteNonQuery()
 
-$batchEnd = (Get-Date).ToString("yyyy-MM-dd:hh:mm:ss")
+$batchEnd = (Get-Date).ToString("yyyy-MM-dd:HH:mm:ss")
 $queryEndBatch = "UPDATE audit.HackAThon2021_jbarberio_BatchLog SET BatchEndDate = '{0}' WHERE BatchId = '{1}'"-f $batchEnd,$batchId
 Invoke-Sqlcmd -ConnectionString $devMetaConn -Query $queryEndBatch | Out-Null
