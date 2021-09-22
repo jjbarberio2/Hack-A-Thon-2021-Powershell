@@ -172,7 +172,7 @@ foreach($scriptToRun in $scriptsToRun){
 
     write-output("deploying script {0}`r`n`r`n" -f $scriptToRun)
     $pathToCode = $scriptPathBase + $scriptToRun
-    $codeToRun = invoke-webrequest -Uri $pathToCode -Headers @{"Authorization"="Basic $gitHubCreds"}   
+    $codeToRun = invoke-webrequest -Uri $pathToCode -Headers @{"Authorization"="Basic $gitHubCreds"} -UseBasicParsing
 
     foreach($database in $databases){
 
