@@ -51,6 +51,8 @@ Function Get-GitHubContent {
 # Gather paths and Hashes
 # ==================================================================================================================
 
+[Net.ServicePointManager]::SecurityProtocol = "tls12, tls11, tls"
+
 $batchId = New-Guid
 
 $AuthBytes  = [System.Text.Encoding]::Ascii.GetBytes("jjbarberio2:5513Int3l")
