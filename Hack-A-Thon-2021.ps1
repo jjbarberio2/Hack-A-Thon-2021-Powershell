@@ -225,6 +225,6 @@ foreach($scriptToRun in $scriptsToRun){
 
 [pscredential]$credObject = New-Object System.Management.Automation.PSCredential ($userName, $secStringPassword)
 
-Write-SqlTableData -Credential $credObject -ServerInstance "SSBMetadata.database.windows.net" -DatabaseName "SSBRPProduction" -SchemaName "audit" -TableName "HackAThon2021_jbarberio_DeploymentLog" -InputData $auditData -Timeout 300
+Write-SqlTableData -Credential $credObject -ServerInstance "ssb-dev-databases.database.windows.net" -DatabaseName "SSBRPDevelopment" -SchemaName "audit" -TableName "HackAThon2021_jbarberio_DeploymentLog" -InputData $auditData -Timeout 300
 
 # write-output("testing 1 2")
