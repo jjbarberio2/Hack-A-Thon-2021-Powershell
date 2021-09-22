@@ -20,7 +20,7 @@ Function Get-GitHubContent {
     Process {
 
         # write-host("Get-GitHubContent Called with paramDirectoryPath = {0}" -f $paramDirectoryPath)
-        $directoryMetadata = invoke-webrequest -Uri $paramDirectoryPath -Headers @{"Authorization"="Basic $gitHubCreds"}
+        $directoryMetadata = invoke-webrequest -Uri $paramDirectoryPath -Headers @{"Authorization"="Basic $gitHubCreds"} -UseBasicParsing
         $contents = $directoryMetadata.Content | ConvertFrom-Json
         $files = $contents | Where-Object {$_.type -eq "file"}
 
