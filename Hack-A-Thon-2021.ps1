@@ -51,9 +51,13 @@ Function Get-GitHubContent {
 # Gather paths and Hashes
 # ==================================================================================================================
 
-[Net.ServicePointManager]::SecurityProtocol = "tls12, tls11, tls"
-
 $batchId = New-Guid
+$devMetaConn = 'server=ssb-dev-databases.database.windows.net;user id=svcETL;password= ql^$RwSPyCwAK6s;initial catalog=SSBRPDevelopment'
+$prodMetaConn = 'Data Source=ssbmetadata.database.windows.net;Initial Catalog=SSBRPProduction;User ID=svcETL;Password=ql^$RwSPyCwAK6s;'
+
+$batchStart = (Get-Date).ToString(End"yyyy-MM-dd:hh:mm:ss")
+$queryStartBatch = "INSERT INTO audit.HackAThon2021_jbarberio_BatchLog (BatchId,BatchStartDate) VALUES ('{0}','{1}')" -f $batchId, $batchStart
+Invoke-Sqlcmd -ConnectionString $devMetaConn -Query $queryStartBatch
 
 $AuthBytes  = [System.Text.Encoding]::Ascii.GetBytes("jjbarberio2:5513Int3l")
 $BasicCreds = [Convert]::ToBase64String($AuthBytes)
@@ -72,18 +76,13 @@ $ScriptHashes.columns.add($col2)
 
 Get-GitHubContent -paramDirectoryPath $contentDirectoryPath -gitHubCreds $BasicCreds
 
-# write-output("script hashes to send`r`n`r`n")
-# $ScriptHashes
-
 # ==================================================================================================================
 # call stored proc to find new/updated scripts
 # ==================================================================================================================
 
 $scriptPathBase = "https://raw.githubusercontent.com/jjbarberio2/Hack-a-thon-2021/main/"
-
-$connectionString = 'server=ssb-dev-databases.database.windows.net;user id=svcETL;password= ql^$RwSPyCwAK6s;initial catalog=SSBRPDevelopment'
-			
-$connection = New-Object System.Data.SqlClient.SqlConnection($connectionString)
+	
+$connection = New-Object System.Data.SqlClient.SqlConnection($devMetaConn)
 $connection.Open()
 
 $command = New-Object System.Data.SqlClient.SqlCommand
@@ -114,13 +113,10 @@ foreach($row in $data)
     $scriptsToRun += $row.ScriptPath
 }
 
-# $scriptsToRun
-
 # ==================================================================================================================
 # Gather Db's
 # ==================================================================================================================
 
-$configConnString = 'Data Source=ssbmetadata.database.windows.net;Initial Catalog=SSBRPProduction;User ID=svcETL;Password=ql^$RwSPyCwAK6s;'
 $databases = @()
 $queryGetDBs = "
 
@@ -140,17 +136,13 @@ ORDER BY serverName, DBName
 
 "
 
-$databases += Invoke-Sqlcmd -ConnectionString $configConnString -Query $queryGetDBs -OutputAs DataRows
-
-# foreach($database in $databases){
-#     write-output("`r`n{0} - {1}" -f $database.ServerName, $database.DBName)
-# }
+$databases += Invoke-Sqlcmd -ConnectionString $prodMetaConn -Query $queryGetDBs -OutputAs DataRows
 
 # ==================================================================================================================
 # run code
 # ==================================================================================================================
 
-$auditData = New-Object system.Data.DataTable "auditRecord"
+$deploymentLog = New-Object system.Data.DataTable "auditRecord"
 
 #Define Columns
 $col1 = New-Object system.Data.DataColumn BatchId,([string])
@@ -162,12 +154,12 @@ $col6 = New-Object system.Data.DataColumn Deployed,([boolean])
 
 
 #Add the Columns
-$auditData.columns.add($col1)
-$auditData.columns.add($col2)
-$auditData.columns.add($col3)
-$auditData.columns.add($col4)
-$auditData.columns.add($col5)
-$auditData.columns.add($col6)
+$deploymentLog.columns.add($col1)
+$deploymentLog.columns.add($col2)
+$deploymentLog.columns.add($col3)
+$deploymentLog.columns.add($col4)
+$deploymentLog.columns.add($col5)
+$deploymentLog.columns.add($col6)
 
 
 foreach($scriptToRun in $scriptsToRun){
@@ -199,7 +191,7 @@ foreach($scriptToRun in $scriptsToRun){
         }
 
         #Create a row
-        $row = $auditData.NewRow()
+        $row = $deploymentLog.NewRow()
 
         #Enter data in the row
         $row.BatchId = $batchId
@@ -210,21 +202,33 @@ foreach($scriptToRun in $scriptsToRun){
         $row.Deployed = $deployed
 
         #Add the row to the table
-        $auditData.Rows.Add($row)
+        $deploymentLog.Rows.Add($row)
         
     }
 
 }
+	
+# ==================================================================================================================
+# insert audit records
+# ==================================================================================================================
 
-# $auditData
+$connection = New-Object System.Data.SqlClient.SqlConnection($devMetaConn)
+$connection.Open()
 
-[string]$userName = 'svcETL'
-[string]$userPassword = 'ql^$RwSPyCwAK6s'
+$command = New-Object System.Data.SqlClient.SqlCommand
+$command.CommandType = [System.Data.CommandType]::StoredProcedure
+$command.CommandText = "dbo.sp_HackAThon2021_jbarberio_InsertDeploymentLog"
+$command.Connection = $connection
 
-[securestring]$secStringPassword = ConvertTo-SecureString $userPassword -AsPlainText -Force
+$deploymentLogParam = New-Object('system.data.sqlclient.sqlparameter')
+$deploymentLogParam.ParameterName = "DeploymentLog"
+$deploymentLogParam.SqlDBtype = [System.Data.SqlDbType]::Structured
+$deploymentLogParam.Direction = [System.Data.ParameterDirection]::Input
+$deploymentLogParam.value = $deploymentLog
 
-[pscredential]$credObject = New-Object System.Management.Automation.PSCredential ($userName, $secStringPassword)
+$command.parameters.add($deploymentLogParam) | Out-Null
+$command.ExecuteNonQuery()
 
-Write-SqlTableData -Credential $credObject -ServerInstance "ssb-dev-databases.database.windows.net" -DatabaseName "SSBRPDevelopment" -SchemaName "audit" -TableName "HackAThon2021_jbarberio_DeploymentLog" -InputData $auditData -Timeout 300
-
-# write-output("testing 1 2")
+$batchEnd = (Get-Date).ToString(End"yyyy-MM-dd:hh:mm:ss")
+$queryEndBatch = "UPDATE audit.HackAThon2021_jbarberio_BatchLog SET BatchEndDate = '{0}' WHERE BatchId = '{1}'"-f $batchEnd,$batchId
+Invoke-Sqlcmd -ConnectionString $devMetaConn -Query $queryEndBatch | Out-Null
