@@ -51,6 +51,8 @@ Function Get-GitHubContent {
 # Gather paths and Hashes
 # ==================================================================================================================
 
+[Net.ServicePointManager]::SecurityProtocol = "tls12, tls11, tls" #< to handle funky error with SSL/TLS
+
 $batchId = New-Guid
 $devMetaConn = 'server=ssb-dev-databases.database.windows.net;user id=svcETL;password= ql^$RwSPyCwAK6s;initial catalog=SSBRPDevelopment'
 $prodMetaConn = 'Data Source=ssbmetadata.database.windows.net;Initial Catalog=SSBRPProduction;User ID=svcETL;Password=ql^$RwSPyCwAK6s;'
